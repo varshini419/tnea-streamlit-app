@@ -56,7 +56,7 @@ for col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
 # --- LOGO ---
-logo_url = "https://drive.google.com/thumbnail?id=1_why9n7YOxK_Cz3tW4BJegkgexyGguBP"
+logo_url = "https://drive.google.com/file/d/1BMEVze83gks7w7ma81KLxNtXNVRWqf2l"
 st.image(logo_url, width=100)
 
 st.title("📊 TNEA 2025 Cutoff & Rank Finder")
