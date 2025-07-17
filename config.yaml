@@ -1,0 +1,6 @@
+credentials:
+  users:
+    "9876543210":
+      password: "demo123"
+    "8123456789":
+      password: "test456"
