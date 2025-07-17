@@ -3,31 +3,54 @@ import pandas as pd
 import yaml
 import requests
 import io
+import uuid
+
+# --- FILE PATHS (SET YOUR ABSOLUTE PATH HERE) ---
+base_path = "E:/Raju_M/Python/TNEA_2024/"
+config_path = base_path + "config.yaml"
+device_session_path = base_path + "device_session.yaml"
 
 # --- CONFIG ---
-# Replace this if you want to use Streamlit Secrets instead
 try:
-    with open("config.yaml") as file:
+    with open(config_path) as file:
         config = yaml.safe_load(file)
+    user_data = config["credentials"]["users"]
 except Exception as e:
     st.error(f"❌ Failed to load config.yaml: {e}")
     st.stop()
 
-user_data = config["credentials"]["users"]
+# --- DEVICE SESSION CONTROL ---
+try:
+    with open(device_session_path) as session_file:
+        session_data = yaml.safe_load(session_file)
+except Exception as e:
+    session_data = {"active_users": {}}
+    st.error(f"❌ Failed to load device_session.yaml: {e}")
+    st.stop()
 
-# --- SESSION MANAGEMENT ---
+def save_session():
+    with open(device_session_path, "w") as f:
+        yaml.dump(session_data, f)
+
+# --- SESSION STATE ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "mobile" not in st.session_state:
     st.session_state.mobile = ""
+if "device_id" not in st.session_state:
+    st.session_state.device_id = str(uuid.uuid4())
 
-# --- SIDEBAR LOGOUT ---
+# --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
     with st.sidebar:
         st.success(f"👤 Logged in as: {st.session_state.mobile}")
         if st.button("Logout"):
+            if st.session_state.mobile in session_data["active_users"]:
+                session_data["active_users"].pop(st.session_state.mobile)
+                save_session()
             st.session_state.logged_in = False
             st.session_state.mobile = ""
+            st.session_state.device_id = ""
             st.rerun()
 
 # --- LOGIN FORM ---
@@ -37,6 +60,11 @@ if not st.session_state.logged_in:
     password = st.text_input("🔑 Password", type="password")
     if st.button("Login"):
         if mobile in user_data and user_data[mobile]["password"] == password:
+            if session_data["active_users"].get(mobile, "") and session_data["active_users"][mobile] != st.session_state.device_id:
+                st.error("⚠️ Already logged in on another device. Logout there first.")
+                st.stop()
+            session_data["active_users"][mobile] = st.session_state.device_id
+            save_session()
             st.session_state.logged_in = True
             st.session_state.mobile = mobile
             st.success(f"✅ Welcome, {mobile}!")
