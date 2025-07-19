@@ -73,10 +73,9 @@ if "device_id" not in st.session_state:
 if st.session_state.get("logged_in", False):
     components.html("""
         <script>
-        window.addEventListener("beforeunload", function (e) {
-            e.preventDefault();
-            e.returnValue = "⚠️ You are about to leave without logging out. Are you sure?";
-        });
+        window.onbeforeunload = function () {
+            return true; // Default browser message will show
+        };
         </script>
     """, height=0)
 
