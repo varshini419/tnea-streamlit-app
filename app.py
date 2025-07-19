@@ -12,7 +12,7 @@ base_path = "./"
 config_path = base_path + "config.yaml"
 device_session_path = base_path + "device_session.yaml"
 
-# --- SESSION TIMEOUT (3 minutes) ---
+# --- SESSION TIMEOUT (15 seconds for testing, adjust as needed) ---
 SESSION_TIMEOUT = 15
 
 # --- CONFIG ---
@@ -77,7 +77,7 @@ if force_logout == "true" and st.session_state.logged_in:
     st.warning("⚠️ You closed the tab without logout. Auto-logged out for safety.")
     st.rerun()
 
-# --- JavaScript: polite warning and auto flagging on tab close ---
+# --- JavaScript warning on tab close ---
 if st.session_state.logged_in:
     st.warning("⚠️ You are logged in. Please logout before closing the tab or browser to avoid forced logout.")
     components.html("""
@@ -109,11 +109,11 @@ if not st.session_state.logged_in:
     password = st.text_input("🔑 Password", type="password")
     if st.button("Login"):
         if mobile in user_data and user_data[mobile]["password"] == password:
-          if mobile in session_data["active_users"]:
-    existing = session_data["active_users"][mobile]
-    if existing["device_id"] != st.session_state.device_id:
-        st.error("⚠️ Already logged in on another device. Logout there first.")
-        st.stop()
+            if mobile in session_data["active_users"]:
+                existing = session_data["active_users"][mobile]
+                if existing["device_id"] != st.session_state.device_id:
+                    st.error("⚠️ Already logged in on another device. Logout there first.")
+                    st.stop()
             update_session(mobile, st.session_state.device_id)
             st.session_state.logged_in = True
             st.session_state.mobile = mobile
@@ -121,7 +121,7 @@ if not st.session_state.logged_in:
             st.rerun()
         else:
             st.error("❌ Invalid mobile number or password")
-    st.stop()
+        st.stop()
 
 # --- LOAD EXCEL DATA ---
 excel_url = "https://docs.google.com/spreadsheets/d/1rASGgYC9RZA0vgmtuFYRG0QO3DOGH_jW/export?format=xlsx"
