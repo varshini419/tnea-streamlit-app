@@ -102,7 +102,7 @@ if st.session_state.logged_in:
 
 # --- LOGIN FORM ---
 if not st.session_state.logged_in:
-st.title("🔐 Login to Access TNEA App")
+st.title("Login to Access TNEA App")
     mobile = st.text_input("\ud83d\udcf1 Mobile Number")
     password = st.text_input("\ud83d\udd11 Password", type="password")
     if st.button("Login"):
