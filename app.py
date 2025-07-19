@@ -227,15 +227,16 @@ st.markdown("---")
 st.markdown(
     """
     <div style='font-size:14px; line-height:1.6'>
-    \ud83d\udccc <strong>Disclaimer</strong>: This is a <strong>privately developed, independent app</strong> created to assist students and parents with TNEA-related information.<br>
-    The data used in this app is <strong>collected from publicly available sources provided by TNEA</strong>.<br>
-    This app is <strong>not affiliated with or endorsed by TNEA or the Directorate of Technical Education (DoTE), Tamil Nadu</strong>.<br><br>
+    <strong>Disclaimer</strong>: This is a privately developed, independent app created to assist students and parents with TNEA-related information.<br>
+    The data used in this app is collected from publicly available sources provided by TNEA.<br>
+    This app is not affiliated with or endorsed by TNEA or the Directorate of Technical Education (DoTE), Tamil Nadu.<br><br>
 
-    \ud83d\udcde <strong>Contact</strong>: +91-8248696926<br>
-    \u2709\ufe0f <strong>Email</strong>: rajumurugannp@gmail.com<br>
-    \ud83e\uddd1\u200d\ud83d\udcbb <strong>Developed by</strong>: Dr. Raju Murugan<br>
-    © 2025 <strong>TNEA Info App</strong>. All rights reserved.
+    <strong>Contact</strong>: +91-8248696926<br>
+    <strong>Email</strong>: rajumurugannp@gmail.com<br>
+    <strong>Developed by</strong>: Dr. Raju Murugan<br>
+    &copy; 2025 <strong>TNEA Info App</strong>. All rights reserved.
     </div>
     """,
     unsafe_allow_html=True
 )
+
