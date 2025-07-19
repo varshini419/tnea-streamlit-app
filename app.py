@@ -55,7 +55,7 @@ if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
 # --- Force logout if browser closed previously ---
-force_logout = st.experimental_get_query_params().get("force_logout", [""])[0]
+force_logout = st.query_params.get("force_logout", [""])[0]
 if st.session_state.get("logged_in", False):
     components.html("""
     <script>
