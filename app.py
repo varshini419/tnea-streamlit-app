@@ -67,8 +67,8 @@ if st.session_state.get("logged_in", False):
     """, height=0)
 
 # --- HANDLE LOGOUT TRIGGER FROM JS BEACON ---
-query_params = st.experimental_get_query_params()
-if "_logout" in st.experimental_get_query_params():
+query_params = st.query_params() 
+if "_logout" in st.query_params():
     mobile = query_params.get("mobile", [None])[0]
     if mobile and mobile in session_data["active_users"]:
         session_data["active_users"].pop(mobile)
