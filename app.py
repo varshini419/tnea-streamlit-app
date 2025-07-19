@@ -4,16 +4,12 @@ import yaml
 import requests
 import io
 import uuid
-import time
-from datetime import timedelta
+import streamlit.components.v1 as components
 
 # --- FILE PATHS ---
 base_path = "./"
 config_path = base_path + "config.yaml"
 device_session_path = base_path + "device_session.yaml"
-
-# --- SESSION TIMEOUT SETTINGS ---
-SESSION_TIMEOUT = 180  # 3 minutes
 
 # --- CONFIG ---
 try:
@@ -35,20 +31,9 @@ def save_session():
     with open(device_session_path, "w") as f:
         yaml.dump(session_data, f)
 
-def is_session_expired(mobile, device_id):
-    user = session_data["active_users"].get(mobile, None)
-    if not user:
-        return True
-    saved_device_id = user.get("device_id", "")
-    timestamp = user.get("timestamp", 0)
-    if saved_device_id != device_id:
-        return True
-    return (time.time() - timestamp) > SESSION_TIMEOUT
-
 def update_session(mobile, device_id):
     session_data["active_users"][mobile] = {
         "device_id": device_id,
-        "timestamp": time.time()
     }
     save_session()
 
@@ -59,6 +44,7 @@ def logout_user():
     st.session_state.logged_in = False
     st.session_state.mobile = ""
     st.session_state.device_id = str(uuid.uuid4())
+    st.success("You have been logged out.")
 
 # --- SESSION STATE ---
 if "logged_in" not in st.session_state:
@@ -68,23 +54,46 @@ if "mobile" not in st.session_state:
 if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
-# --- SESSION EXPIRY CHECK ---
+# --- Force logout if browser closed previously ---
+force_logout = st.experimental_get_query_params().get("force_logout", [""])[0]
+if st.session_state.get("logged_in", False):
+    components.html("""
+    <script>
+        const shouldForceLogout = localStorage.getItem("force_logout");
+        if (shouldForceLogout === "true") {
+            localStorage.removeItem("force_logout");
+            window.location.href = window.location.pathname + "?force_logout=true";
+        }
+    </script>
+    """, height=0)
+
+if force_logout == "true" and st.session_state.logged_in:
+    logout_user()
+    st.warning("⚠️ You closed the tab without logout. Auto-logged out for safety.")
+    st.rerun()
+
+# --- JavaScript: warning and auto flagging on tab close ---
 if st.session_state.logged_in:
-    user = session_data["active_users"].get(st.session_state.mobile, {})
-    last_time = user.get("timestamp", 0)
-    remaining_time = max(0, SESSION_TIMEOUT - int(time.time() - last_time))
+    components.html("""
+    <script>
+        const mobileKey = "streamlit_logged_in_mobile";
 
-    if is_session_expired(st.session_state.mobile, st.session_state.device_id):
-        logout_user()
-        st.warning("⚠️ Session expired. Please log in again.")
-        st.stop()
-    else:
-        update_session(st.session_state.mobile, st.session_state.device_id)
+        // Save login status
+        localStorage.setItem(mobileKey, "true");
 
-    # Show countdown in sidebar
-    with st.sidebar:
-        readable = str(timedelta(seconds=remaining_time))
-        st.info(f"⏳ Session expires in {readable}")
+        // Warn user before leaving the tab
+        window.addEventListener("beforeunload", function (e) {
+            var confirmationMessage = "You are logged in. Please logout before closing the tab.";
+            e.returnValue = confirmationMessage;
+            return confirmationMessage;
+        });
+
+        // Mark for auto logout
+        window.addEventListener("unload", function () {
+            localStorage.setItem("force_logout", "true");
+        });
+    </script>
+    """, height=0)
 
 # --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
@@ -103,7 +112,7 @@ if not st.session_state.logged_in:
         if mobile in user_data and user_data[mobile]["password"] == password:
             if mobile in session_data["active_users"]:
                 existing = session_data["active_users"][mobile]
-                if existing["device_id"] != st.session_state.device_id and (time.time() - existing["timestamp"]) < SESSION_TIMEOUT:
+                if existing["device_id"] != st.session_state.device_id:
                     st.error("⚠️ Already logged in on another device. Logout there first.")
                     st.stop()
             update_session(mobile, st.session_state.device_id)
