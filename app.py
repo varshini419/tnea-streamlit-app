@@ -49,7 +49,7 @@ def logout_user():
     st.session_state.logged_in = False
     st.session_state.mobile = ""
     st.session_state.device_id = str(uuid.uuid4())
-    st.success("You have been logged out.")
+    st.success("✅ You have been logged out.")
 
 # --- SESSION STATE ---
 if "logged_in" not in st.session_state:
@@ -77,14 +77,16 @@ if force_logout == "true" and st.session_state.logged_in:
     st.warning("⚠️ You closed the tab without logout. Auto-logged out for safety.")
     st.rerun()
 
-# --- JavaScript: warning and auto flagging on tab close ---
+# --- JavaScript: polite warning and auto flagging on tab close ---
 if st.session_state.logged_in:
+    st.warning("⚠️ You are logged in. Please logout before closing the tab or browser to avoid forced logout.")
     components.html("""
     <script>
         window.addEventListener("beforeunload", function (e) {
-            var confirmationMessage = "You are logged in. Please logout before closing the tab.";
-            e.returnValue = confirmationMessage;
-            return confirmationMessage;
+            var message = "⚠️ Please logout before closing the tab or browser to avoid being auto-logged out.";
+            e.preventDefault();
+            e.returnValue = message;
+            return message;
         });
         window.addEventListener("unload", function () {
             localStorage.setItem("force_logout", "true");
