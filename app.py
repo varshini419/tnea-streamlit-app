@@ -5,15 +5,15 @@ import requests
 import io
 import uuid
 import time
-import streamlit.components.v1 as components
+from datetime import timedelta
 
 # --- FILE PATHS ---
 base_path = "./"
 config_path = base_path + "config.yaml"
 device_session_path = base_path + "device_session.yaml"
 
-# --- SESSION TIMEOUT (15 seconds for testing, adjust as needed) ---
-SESSION_TIMEOUT = 15
+# --- SESSION TIMEOUT SETTINGS ---
+SESSION_TIMEOUT = 180  # 3 minutes
 
 # --- CONFIG ---
 try:
@@ -35,6 +35,16 @@ def save_session():
     with open(device_session_path, "w") as f:
         yaml.dump(session_data, f)
 
+def is_session_expired(mobile, device_id):
+    user = session_data["active_users"].get(mobile, None)
+    if not user:
+        return True
+    saved_device_id = user.get("device_id", "")
+    timestamp = user.get("timestamp", 0)
+    if saved_device_id != device_id:
+        return True
+    return (time.time() - timestamp) > SESSION_TIMEOUT
+
 def update_session(mobile, device_id):
     session_data["active_users"][mobile] = {
         "device_id": device_id,
@@ -49,7 +59,6 @@ def logout_user():
     st.session_state.logged_in = False
     st.session_state.mobile = ""
     st.session_state.device_id = str(uuid.uuid4())
-    st.success("✅ You have been logged out.")
 
 # --- SESSION STATE ---
 if "logged_in" not in st.session_state:
@@ -59,40 +68,23 @@ if "mobile" not in st.session_state:
 if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
-# --- Force logout if browser closed previously ---
-force_logout = st.query_params.get("force_logout", "")
-if st.session_state.get("logged_in", False):
-    components.html("""
-    <script>
-        const shouldForceLogout = localStorage.getItem("force_logout");
-        if (shouldForceLogout === "true") {
-            localStorage.removeItem("force_logout");
-            window.location.href = window.location.pathname + "?force_logout=true";
-        }
-    </script>
-    """, height=0)
-
-if force_logout == "true" and st.session_state.logged_in:
-    logout_user()
-    st.warning("⚠️ You closed the tab without logout. Auto-logged out for safety.")
-    st.rerun()
-
-# --- JavaScript warning on tab close ---
+# --- SESSION EXPIRY CHECK ---
 if st.session_state.logged_in:
-    st.warning("⚠️ You are logged in. Please logout before closing the tab or browser to avoid forced logout.")
-    components.html("""
-    <script>
-        window.addEventListener("beforeunload", function (e) {
-            var message = "⚠️ Please logout before closing the tab or browser to avoid being auto-logged out.";
-            e.preventDefault();
-            e.returnValue = message;
-            return message;
-        });
-        window.addEventListener("unload", function () {
-            localStorage.setItem("force_logout", "true");
-        });
-    </script>
-    """, height=0)
+    user = session_data["active_users"].get(st.session_state.mobile, {})
+    last_time = user.get("timestamp", 0)
+    remaining_time = max(0, SESSION_TIMEOUT - int(time.time() - last_time))
+
+    if is_session_expired(st.session_state.mobile, st.session_state.device_id):
+        logout_user()
+        st.warning("⚠️ Session expired. Please log in again.")
+        st.stop()
+    else:
+        update_session(st.session_state.mobile, st.session_state.device_id)
+
+    # Show countdown in sidebar
+    with st.sidebar:
+        readable = str(timedelta(seconds=remaining_time))
+        st.info(f"⏳ Session expires in {readable}")
 
 # --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
@@ -111,7 +103,7 @@ if not st.session_state.logged_in:
         if mobile in user_data and user_data[mobile]["password"] == password:
             if mobile in session_data["active_users"]:
                 existing = session_data["active_users"][mobile]
-                if existing["device_id"] != st.session_state.device_id:
+                if existing["device_id"] != st.session_state.device_id and (time.time() - existing["timestamp"]) < SESSION_TIMEOUT:
                     st.error("⚠️ Already logged in on another device. Logout there first.")
                     st.stop()
             update_session(mobile, st.session_state.device_id)
@@ -121,7 +113,7 @@ if not st.session_state.logged_in:
             st.rerun()
         else:
             st.error("❌ Invalid mobile number or password")
-        st.stop()
+    st.stop()
 
 # --- LOAD EXCEL DATA ---
 excel_url = "https://docs.google.com/spreadsheets/d/1rASGgYC9RZA0vgmtuFYRG0QO3DOGH_jW/export?format=xlsx"
@@ -137,12 +129,12 @@ logo_url = "https://drive.google.com/thumbnail?id=1FPfkRH3BC1BeQRtQVpZDH3P3ilTSM
 st.image(logo_url, width=100)
 
 st.title("📊 TNEA 2025 Cutoff & Rank Finder")
-st.markdown(f"🏔️ **Accessed by: {st.session_state.mobile}**")
+st.markdown(f"🆔 **Accessed by: {st.session_state.mobile}**")
 
 # --- COLLEGE FILTERS ---
 df['College_Option'] = df['CL'].astype(str) + " - " + df['College']
 college_options = sorted(df['College_Option'].unique().tolist())
-selected_college = st.selectbox("🏫 Select College", options=["All"] + college_options)
+selected_college = st.selectbox("🏛️ Select College", options=["All"] + college_options)
 
 st.subheader("🎯 Filter by Community, Department, Zone")
 if selected_college == "All":
@@ -179,7 +171,7 @@ if compare_colleges:
 
     format_dict = {col: '{:.2f}' if '_C' in col else '{:.0f}' for col in compare_cols if '_C' in col or '_GR' in col}
 
-    st.markdown("### 🗺️ College Comparison Table")
+    st.markdown("### 🟨 College Comparison Table")
     st.dataframe(
         compare_df[compare_cols]
         .style
