@@ -4,6 +4,7 @@ import yaml
 import requests
 import io
 import uuid
+import time
 import streamlit.components.v1 as components
 
 # --- FILE PATHS ---
@@ -11,13 +12,16 @@ base_path = "./"
 config_path = base_path + "config.yaml"
 device_session_path = base_path + "device_session.yaml"
 
+# --- SESSION TIMEOUT (3 minutes) ---
+SESSION_TIMEOUT = 180
+
 # --- CONFIG ---
 try:
     with open(config_path) as file:
         config = yaml.safe_load(file)
     user_data = config["credentials"]["users"]
 except Exception as e:
-    st.error(f"❌ Failed to load config.yaml: {e}")
+    st.error(f"\u274c Failed to load config.yaml: {e}")
     st.stop()
 
 # --- DEVICE SESSION CONTROL ---
@@ -34,6 +38,7 @@ def save_session():
 def update_session(mobile, device_id):
     session_data["active_users"][mobile] = {
         "device_id": device_id,
+        "timestamp": time.time()
     }
     save_session()
 
@@ -55,7 +60,7 @@ if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
 # --- Force logout if browser closed previously ---
-force_logout = st.query_params.get("force_logout", [""])[0]
+force_logout = st.query_params.get("force_logout", "")
 if st.session_state.get("logged_in", False):
     components.html("""
     <script>
@@ -69,26 +74,18 @@ if st.session_state.get("logged_in", False):
 
 if force_logout == "true" and st.session_state.logged_in:
     logout_user()
-    st.warning("⚠️ You closed the tab without logout. Auto-logged out for safety.")
+    st.warning("\u26a0\ufe0f You closed the tab without logout. Auto-logged out for safety.")
     st.rerun()
 
 # --- JavaScript: warning and auto flagging on tab close ---
 if st.session_state.logged_in:
     components.html("""
     <script>
-        const mobileKey = "streamlit_logged_in_mobile";
-
-        // Save login status
-        localStorage.setItem(mobileKey, "true");
-
-        // Warn user before leaving the tab
         window.addEventListener("beforeunload", function (e) {
             var confirmationMessage = "You are logged in. Please logout before closing the tab.";
             e.returnValue = confirmationMessage;
             return confirmationMessage;
         });
-
-        // Mark for auto logout
         window.addEventListener("unload", function () {
             localStorage.setItem("force_logout", "true");
         });
@@ -98,30 +95,32 @@ if st.session_state.logged_in:
 # --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
     with st.sidebar:
-        st.success(f"👤 Logged in as: {st.session_state.mobile}")
+        st.success(f"\ud83d\udc64 Logged in as: {st.session_state.mobile}")
         if st.button("Logout"):
             logout_user()
             st.rerun()
 
 # --- LOGIN FORM ---
 if not st.session_state.logged_in:
-    st.title("🔐 Login to Access TNEA App")
-    mobile = st.text_input("📱 Mobile Number")
-    password = st.text_input("🔑 Password", type="password")
+    st.title("\ud83d\udd10 Login to Access TNEA App")
+    mobile = st.text_input("\ud83d\udcf1 Mobile Number")
+    password = st.text_input("\ud83d\udd11 Password", type="password")
     if st.button("Login"):
         if mobile in user_data and user_data[mobile]["password"] == password:
             if mobile in session_data["active_users"]:
                 existing = session_data["active_users"][mobile]
                 if existing["device_id"] != st.session_state.device_id:
-                    st.error("⚠️ Already logged in on another device. Logout there first.")
-                    st.stop()
+                    elapsed = time.time() - existing.get("timestamp", 0)
+                    if elapsed < SESSION_TIMEOUT:
+                        st.error("\u26a0\ufe0f Already logged in on another device. Logout there first.")
+                        st.stop()
             update_session(mobile, st.session_state.device_id)
             st.session_state.logged_in = True
             st.session_state.mobile = mobile
-            st.success(f"✅ Welcome, {mobile}!")
+            st.success(f"\u2705 Welcome, {mobile}!")
             st.rerun()
         else:
-            st.error("❌ Invalid mobile number or password")
+            st.error("\u274c Invalid mobile number or password")
     st.stop()
 
 # --- LOAD EXCEL DATA ---
@@ -137,26 +136,26 @@ for col in df.columns:
 logo_url = "https://drive.google.com/thumbnail?id=1FPfkRH3BC1BeQRtQVpZDH3P3ilTSMYNA"
 st.image(logo_url, width=100)
 
-st.title("📊 TNEA 2025 Cutoff & Rank Finder")
-st.markdown(f"🆔 **Accessed by: {st.session_state.mobile}**")
+st.title("\ud83d\udcca TNEA 2025 Cutoff & Rank Finder")
+st.markdown(f"\ud83c\udd94 **Accessed by: {st.session_state.mobile}**")
 
 # --- COLLEGE FILTERS ---
 df['College_Option'] = df['CL'].astype(str) + " - " + df['College']
 college_options = sorted(df['College_Option'].unique().tolist())
-selected_college = st.selectbox("🏛️ Select College", options=["All"] + college_options)
+selected_college = st.selectbox("\ud83c\udfdb\ufe0f Select College", options=["All"] + college_options)
 
-st.subheader("🎯 Filter by Community, Department, Zone")
+st.subheader("\ud83c\udfaf Filter by Community, Department, Zone")
 if selected_college == "All":
     community = st.selectbox("Select Community", options=["All", "OC", "BC", "BCM", "MBC", "SC", "SCA", "ST"], key="main_community")
     department = st.selectbox("Select Department (Br)", options=["All"] + sorted(df['Br'].dropna().unique().tolist()))
     zone = st.selectbox("Select Zone", options=["All"] + sorted(df['zone'].dropna().unique().tolist()))
 
 # --- COMPARE COLLEGES ---
-st.subheader("📌 Compare Up to 5 Colleges")
+st.subheader("\ud83d\udccc Compare Up to 5 Colleges")
 compare_colleges = st.multiselect("Select colleges to compare", options=college_options, max_selections=5)
 
 if compare_colleges:
-    st.markdown("### 🎯 Filter Inside Compared Colleges")
+    st.markdown("### \ud83c\udfaf Filter Inside Compared Colleges")
     comp_dept = st.selectbox("Department", options=["All"] + sorted(df['Br'].dropna().unique().tolist()), key="compare_department")
     comp_comm = st.selectbox("Community", options=["All", "OC", "BC", "BCM", "MBC", "SC", "SCA", "ST"], key="compare_community")
 
@@ -180,7 +179,7 @@ if compare_colleges:
 
     format_dict = {col: '{:.2f}' if '_C' in col else '{:.0f}' for col in compare_cols if '_C' in col or '_GR' in col}
 
-    st.markdown("### 🟨 College Comparison Table")
+    st.markdown("### \ud83d\uddfa\ufe0f College Comparison Table")
     st.dataframe(
         compare_df[compare_cols]
         .style
@@ -217,7 +216,7 @@ format_dict = {
     if '_C' in col or '_GR' in col
 }
 
-st.markdown("### 🔎 Filtered Results")
+st.markdown("### \ud83d\udd0e Filtered Results")
 
 if show_data:
     st.dataframe(
