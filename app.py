@@ -70,16 +70,21 @@ if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
 
+
 # --- Warn on tab close without logout ---
 if st.session_state.get("logged_in", False):
     components.html("""
-        <script>
-        window.addEventListener("beforeunload", function (e) {
-            e.preventDefault();
-            e.returnValue = '';
-        });
-        </script>
-    """, height=0)
+        <div>
+            <script>
+                window.onbeforeunload = function (e) {
+                    var confirmationMessage = '⚠️ You are about to leave the page without logging out.';
+                    (e || window.event).returnValue = confirmationMessage;
+                    return confirmationMessage;
+                };
+            </script>
+        </div>
+    """, height=20)
+
 
 
 # --- SESSION EXPIRY CHECK ---
