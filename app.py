@@ -6,6 +6,7 @@ import io
 import uuid
 import time
 from datetime import timedelta
+import streamlit.components.v1 as components
 
 # --- FILE PATHS ---
 base_path = "./"
@@ -67,6 +68,17 @@ if "mobile" not in st.session_state:
     st.session_state.mobile = ""
 if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
+
+# --- Warn on tab close without logout ---
+if st.session_state.get("logged_in", False):
+    components.html("""
+        <script>
+        window.addEventListener("beforeunload", function (e) {
+            e.preventDefault();
+            e.returnValue = "⚠️ You are about to leave without logging out. Are you sure?";
+        });
+        </script>
+    """, height=0)
 
 # --- SESSION EXPIRY CHECK ---
 if st.session_state.logged_in:
@@ -231,7 +243,7 @@ st.markdown(
     This app is not affiliated with or endorsed by TNEA or the Directorate of Technical Education (DoTE), Tamil Nadu.<br><br>
 
     <strong>Contact</strong>: +91-8248696926<br>
-    <strong>Email</strong>: rajumurugannp@gmail.com<br>
+    <strong>Email</strong>: rajumurugannp@gmail<br>
     <strong>Developed by</strong>: Dr. Raju Murugan<br>
     &copy; 2025 <strong>TNEA Info App</strong>. All rights reserved.
     </div>
