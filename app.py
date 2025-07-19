@@ -5,16 +5,13 @@ import requests
 import io
 import uuid
 import time
-from datetime import timedelta
 import streamlit.components.v1 as components
+from datetime import datetime
 
 # --- FILE PATHS ---
 base_path = "./"
 config_path = base_path + "config.yaml"
 device_session_path = base_path + "device_session.yaml"
-
-# --- SESSION TIMEOUT SETTINGS ---
-SESSION_TIMEOUT = 180  # 3 minutes
 
 # --- CONFIG ---
 try:
@@ -35,16 +32,6 @@ except Exception:
 def save_session():
     with open(device_session_path, "w") as f:
         yaml.dump(session_data, f)
-
-def is_session_expired(mobile, device_id):
-    user = session_data["active_users"].get(mobile, None)
-    if not user:
-        return True
-    saved_device_id = user.get("device_id", "")
-    timestamp = user.get("timestamp", 0)
-    if saved_device_id != device_id:
-        return True
-    return (time.time() - timestamp) > SESSION_TIMEOUT
 
 def update_session(mobile, device_id):
     session_data["active_users"][mobile] = {
@@ -69,47 +56,23 @@ if "mobile" not in st.session_state:
 if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
-
-
-# --- Warn on tab close without logout ---
+# --- JS AUTO LOGOUT ON TAB CLOSE ---
 if st.session_state.get("logged_in", False):
-    components.html("""
-        <div>
-            <script>
-                window.onbeforeunload = function (e) {
-                    var confirmationMessage = '⚠️ You are about to leave the page without logging out.';
-                    (e || window.event).returnValue = confirmationMessage;
-                    return confirmationMessage;
-                };
-            </script>
-        </div>
-    """, height=20)
+    components.html(f"""
+        <script>
+            window.addEventListener('beforeunload', function() {{
+                navigator.sendBeacon("/_logout?mobile={st.session_state.mobile}");
+            }});
+        </script>
+    """, height=0)
 
-
-
-# --- SESSION EXPIRY CHECK ---
-if st.session_state.logged_in:
-    user = session_data["active_users"].get(st.session_state.mobile, {})
-    last_time = user.get("timestamp", 0)
-    remaining_time = max(0, SESSION_TIMEOUT - int(time.time() - last_time))
-
-    if is_session_expired(st.session_state.mobile, st.session_state.device_id):
-        logout_user()
-        st.warning("⚠️ Session expired. Please log in again.")
-        st.stop()
-    else:
-        update_session(st.session_state.mobile, st.session_state.device_id)
-
-  # Live countdown in sidebar
-    with st.sidebar:
-        countdown_placeholder = st.empty()
-        for sec in range(remaining_time, -1, -1):
-            if is_session_expired(st.session_state.mobile, st.session_state.device_id):
-                logout_user()
-                st.warning("⚠️ Session expired. Please log in again.")
-                st.stop()
-            countdown_placeholder.info(f"⏳ Session expires in {str(timedelta(seconds=sec))}")
-            time.sleep(1)
+# --- HANDLE LOGOUT TRIGGER FROM JS BEACON ---
+query_params = st.experimental_get_query_params()
+if "_logout" in st.experimental_get_query_params():
+    mobile = query_params.get("mobile", [None])[0]
+    if mobile and mobile in session_data["active_users"]:
+        session_data["active_users"].pop(mobile)
+        save_session()
 
 # --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
@@ -128,7 +91,7 @@ if not st.session_state.logged_in:
         if mobile in user_data and user_data[mobile]["password"] == password:
             if mobile in session_data["active_users"]:
                 existing = session_data["active_users"][mobile]
-                if existing["device_id"] != st.session_state.device_id and (time.time() - existing["timestamp"]) < SESSION_TIMEOUT:
+                if existing["device_id"] != st.session_state.device_id:
                     st.error("⚠️ Already logged in on another device. Logout there first.")
                     st.stop()
             update_session(mobile, st.session_state.device_id)
