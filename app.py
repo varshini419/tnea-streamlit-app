@@ -109,13 +109,11 @@ if not st.session_state.logged_in:
     password = st.text_input("🔑 Password", type="password")
     if st.button("Login"):
         if mobile in user_data and user_data[mobile]["password"] == password:
-            if mobile in session_data["active_users"]:
-                existing = session_data["active_users"][mobile]
-                if existing["device_id"] != st.session_state.device_id:
-                    elapsed = time.time() - existing.get("timestamp", 0)
-                    if elapsed < SESSION_TIMEOUT:
-                        st.error("⚠️ Already logged in on another device. Logout there first.")
-                        st.stop()
+          if mobile in session_data["active_users"]:
+    existing = session_data["active_users"][mobile]
+    if existing["device_id"] != st.session_state.device_id:
+        st.error("⚠️ Already logged in on another device. Logout there first.")
+        st.stop()
             update_session(mobile, st.session_state.device_id)
             st.session_state.logged_in = True
             st.session_state.mobile = mobile
