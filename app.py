@@ -75,9 +75,13 @@ if st.session_state.logged_in:
     remaining_time = max(0, SESSION_TIMEOUT - int(time.time() - last_time))
 
     # Show countdown timer in sidebar
-    with st.sidebar:
-        readable = str(timedelta(seconds=remaining_time))
-        st.info(f"\u23f3 Session expires in {readable}")
+        with st.sidebar:
+        countdown_placeholder = st.empty()
+        for sec in range(remaining_time, 0, -1):
+            readable = str(timedelta(seconds=sec))
+            countdown_placeholder.info(f"⏳ Session expires in {readable}")
+            time.sleep(1)
+
 
     # Auto logout if expired
     if is_session_expired(st.session_state.mobile, st.session_state.device_id):
