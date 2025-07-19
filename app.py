@@ -186,8 +186,14 @@ else:
 st.markdown("---")
 st.markdown(
     """
-    📞 **Contact**: +91-8248696926 | ✉️ Email: rajumurugannp@gmail.com  
-    🧑‍💻 Developed by Dr. Raju Murugan | © 2025 TNEA Info App. All rights reserved.
+    This is a privately developed, independent app created to assist students and parents with TNEA-related information.
+The data used in this app is collected from publicly available sources provided by TNEA.
+This app is not affiliated with or endorsed by TNEA or the Directorate of Technical Education (DoTE), Tamil Nadu.
+
+📞 Contact: +91-8248696926
+✉️ Email: rajumurugannp@gmail.com
+🧑‍💻 Developed by: Dr. Raju Murugan
+© 2025 TNEA Info App. All rights reserved.
     """,
     unsafe_allow_html=True
 )
