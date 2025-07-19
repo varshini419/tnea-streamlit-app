@@ -84,13 +84,7 @@ for col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
 # --- LOGO ---
-# Extracted File ID from your link
-file_id = "1FPfkRH3BC1BeQRtQVpZDH3P3ilTSMYNA"
-
-# Use Google Drive's direct link format
-logo_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-
-# Display logo
+logo_url = "https://drive.google.com/thumbnail?id=1FPfkRH3BC1BeQRtQVpZDH3P3ilTSMYNA"
 st.image(logo_url, width=100)
 
 st.title("📊 TNEA 2025 Cutoff & Rank Finder")
