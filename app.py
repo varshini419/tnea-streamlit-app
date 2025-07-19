@@ -100,10 +100,16 @@ if st.session_state.logged_in:
     else:
         update_session(st.session_state.mobile, st.session_state.device_id)
 
-    # Show countdown in sidebar
+  # Live countdown in sidebar
     with st.sidebar:
-        readable = str(timedelta(seconds=remaining_time))
-        st.info(f"⏳ Session expires in {readable}")
+        countdown_placeholder = st.empty()
+        for sec in range(remaining_time, -1, -1):
+            if is_session_expired(st.session_state.mobile, st.session_state.device_id):
+                logout_user()
+                st.warning("⚠️ Session expired. Please log in again.")
+                st.stop()
+            countdown_placeholder.info(f"⏳ Session expires in {str(timedelta(seconds=sec))}")
+            time.sleep(1)
 
 # --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
