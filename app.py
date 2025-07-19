@@ -6,6 +6,7 @@ import io
 import uuid
 import time
 from datetime import timedelta
+import streamlit.components.v1 as components
 
 # --- FILE PATHS ---
 base_path = "./"
@@ -68,6 +69,28 @@ if "mobile" not in st.session_state:
 if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
+# --- HANDLE LOGOUT TRIGGER FROM JS BEACON ---
+query_params = st.query_params
+if "_logout" in query_params and "mobile" in query_params:
+    logout_mobile = query_params.get("mobile", [""])[0]
+    if logout_mobile in session_data["active_users"]:
+        session_data["active_users"].pop(logout_mobile)
+        save_session()
+    st.session_state.logged_in = False
+    st.session_state.mobile = ""
+    st.session_state.device_id = str(uuid.uuid4())
+    st.rerun()
+
+# --- AUTO LOGOUT VIA JS ON TAB CLOSE ---
+if st.session_state.logged_in:
+    components.html(f"""
+        <script>
+            window.addEventListener("beforeunload", function () {{
+                navigator.sendBeacon(window.location.href + "?_logout=1&mobile={st.session_state.mobile}");
+            }});
+        </script>
+    """, height=0)
+
 # --- SESSION EXPIRY CHECK ---
 if st.session_state.logged_in:
     user = session_data["active_users"].get(st.session_state.mobile, {})
@@ -81,10 +104,17 @@ if st.session_state.logged_in:
     else:
         update_session(st.session_state.mobile, st.session_state.device_id)
 
-    # Show countdown in sidebar
+    # Show live countdown timer
     with st.sidebar:
-        readable = str(timedelta(seconds=remaining_time))
-        st.info(f"⏳ Session expires in {readable}")
+        countdown_placeholder = st.empty()
+        for i in range(remaining_time, -1, -1):
+            mins, secs = divmod(i, 60)
+            countdown_placeholder.info(f"⏳ Session expires in {mins:01}:{secs:02}")
+            time.sleep(1)
+            if is_session_expired(st.session_state.mobile, st.session_state.device_id):
+                logout_user()
+                st.warning("⚠️ Session expired. Please log in again.")
+                st.stop()
 
 # --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
