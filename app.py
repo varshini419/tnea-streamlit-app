@@ -84,7 +84,8 @@ for col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
 # --- LOGO ---
-logo_url = "https://drive.google.com/thumbnail?id=1BMEVze83gks7w7ma81KLxNtXNVRWqf2l"
+file_id = "1FPfkRH3BC1BeQRtQVpZDH3P3ilTSMYNA"
+logo_url = f"https://drive.google.com/uc?id={file_id}"
 st.image(logo_url, width=100)
 
 st.title("📊 TNEA 2025 Cutoff & Rank Finder")
