@@ -5,13 +5,15 @@ import requests
 import io
 import uuid
 import time
-import streamlit.components.v1 as components
-from datetime import datetime
+from datetime import timedelta
 
 # --- FILE PATHS ---
 base_path = "./"
 config_path = base_path + "config.yaml"
 device_session_path = base_path + "device_session.yaml"
+
+# --- SESSION TIMEOUT SETTINGS ---
+SESSION_TIMEOUT = 180  # 3 minutes
 
 # --- CONFIG ---
 try:
@@ -32,6 +34,16 @@ except Exception:
 def save_session():
     with open(device_session_path, "w") as f:
         yaml.dump(session_data, f)
+
+def is_session_expired(mobile, device_id):
+    user = session_data["active_users"].get(mobile, None)
+    if not user:
+        return True
+    saved_device_id = user.get("device_id", "")
+    timestamp = user.get("timestamp", 0)
+    if saved_device_id != device_id:
+        return True
+    return (time.time() - timestamp) > SESSION_TIMEOUT
 
 def update_session(mobile, device_id):
     session_data["active_users"][mobile] = {
@@ -56,26 +68,23 @@ if "mobile" not in st.session_state:
 if "device_id" not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
 
-# --- JS AUTO LOGOUT ON TAB CLOSE ---
-if st.session_state.get("logged_in", False):
-    components.html(f"""
-        <script>
-            window.addEventListener('beforeunload', function() {{
-                navigator.sendBeacon("/_logout?mobile={st.session_state.mobile}");
-            }});
-        </script>
-    """, height=0)
+# --- SESSION EXPIRY CHECK ---
+if st.session_state.logged_in:
+    user = session_data["active_users"].get(st.session_state.mobile, {})
+    last_time = user.get("timestamp", 0)
+    remaining_time = max(0, SESSION_TIMEOUT - int(time.time() - last_time))
 
+    if is_session_expired(st.session_state.mobile, st.session_state.device_id):
+        logout_user()
+        st.warning("⚠️ Session expired. Please log in again.")
+        st.stop()
+    else:
+        update_session(st.session_state.mobile, st.session_state.device_id)
 
-# --- HANDLE LOGOUT TRIGGER FROM JS BEACON ---
-query_params = st.query_params
-if "_logout" in query_params:
-    mobile = query_params.get("mobile", [None])[0]
-    if mobile and mobile in session_data["active_users"]:
-        session_data["active_users"].pop(mobile)
-        save_session()
-
-
+    # Show countdown in sidebar
+    with st.sidebar:
+        readable = str(timedelta(seconds=remaining_time))
+        st.info(f"⏳ Session expires in {readable}")
 
 # --- LOGOUT BUTTON ---
 if st.session_state.logged_in:
@@ -94,7 +103,7 @@ if not st.session_state.logged_in:
         if mobile in user_data and user_data[mobile]["password"] == password:
             if mobile in session_data["active_users"]:
                 existing = session_data["active_users"][mobile]
-                if existing["device_id"] != st.session_state.device_id:
+                if existing["device_id"] != st.session_state.device_id and (time.time() - existing["timestamp"]) < SESSION_TIMEOUT:
                     st.error("⚠️ Already logged in on another device. Logout there first.")
                     st.stop()
             update_session(mobile, st.session_state.device_id)
@@ -222,7 +231,7 @@ st.markdown(
     This app is not affiliated with or endorsed by TNEA or the Directorate of Technical Education (DoTE), Tamil Nadu.<br><br>
 
     <strong>Contact</strong>: +91-8248696926<br>
-    <strong>Email</strong>: rajumurugannp@gmail<br>
+    <strong>Email</strong>: rajumurugannp@gmail.com<br>
     <strong>Developed by</strong>: Dr. Raju Murugan<br>
     &copy; 2025 <strong>TNEA Info App</strong>. All rights reserved.
     </div>
